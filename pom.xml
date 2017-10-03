@@ -21,6 +21,12 @@
           <version>3.8.1</version>
           <scope>test</scope>
       </dependency>
+      <!-- https://mvnrepository.com/artifact/org.springframework/spring-context -->
+      <dependency>
+          <groupId>org.springframework</groupId>
+          <artifactId>spring-context</artifactId>
+          <version>5.0.0.RELEASE</version>
+      </dependency>
   </dependencies>
 
   <build>
@@ -30,7 +36,7 @@
               <configuration>
                 <archive>
                   <manifest>
-                    <mainClass>com.sweetrollthief.hub.Reset</mainClass>
+                    <mainClass>com.sweetrollthief.hub.Hub</mainClass>
                   </manifest>
                 </archive>
                 <descriptorRefs>
