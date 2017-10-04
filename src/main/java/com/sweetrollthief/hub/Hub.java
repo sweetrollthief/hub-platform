@@ -4,17 +4,47 @@ import org.springframework.context.annotation.*;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 
-import com.sweetrollthief.hub.gate.Gate;
-
 /**
-* Main class, program entry point
+* Static program entry point
 *
 **/
-public class Hub {
+public class Hub extends HubBean {
     public static void main(String[] args) {
-        ApplicationContext ctx = new AnnotationConfigApplicationContext(HubConfig.class);
-        System.out.println("Hello world " + ctx.getBean(Gate.class));
+        ApplicationContext context = new AnnotationConfigApplicationContext(HubConfig.class);
 
-        ((ConfigurableApplicationContext) ctx).close();
+        try {
+            context.getBean(Hub.class).watch();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        ((ConfigurableApplicationContext) context).close();
+    }
+
+    public void watch() throws Exception {
+        while (true) {
+            switch (validateCommand(getBean(Console.class).watch())) {
+                case 100:
+                    break;
+                case 200:
+                    return;
+                case 500:
+                    throw new Exception("Error");
+            }
+        }
+    }
+
+    public int validateCommand(String str) {
+        if (str == null) {
+            return 500;
+        } else if ("exit".equals(str)) {
+            return 200;
+        }
+
+        return 100;
+    }
+
+    public void close() {
+
     }
 }
