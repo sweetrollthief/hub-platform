@@ -13,6 +13,7 @@ public class Hub extends HubBean {
         ApplicationContext context = new AnnotationConfigApplicationContext(HubConfig.class);
 
         try {
+            context.getBean(Gate.class).open();
             context.getBean(Hub.class).watch();
         } catch (Exception e) {
             e.printStackTrace();
@@ -22,8 +23,11 @@ public class Hub extends HubBean {
     }
 
     public void watch() throws Exception {
+        Console consoleHandler = context.getBean(Console.class);
+
+        // TODO: remove that ugly loop condition
         while (true) {
-            switch (validateCommand(getBean(Console.class).watch())) {
+            switch (validateCommand(consoleHandler.watch())) {
                 case 100:
                     break;
                 case 200:
