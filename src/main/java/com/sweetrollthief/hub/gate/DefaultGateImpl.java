@@ -5,18 +5,20 @@ import java.util.LinkedList;
 import java.util.Iterator;
 import java.net.InetSocketAddress;
 import java.nio.channels.Selector;
+import java.nio.channels.SocketChannel;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SelectionKey;
 
-import com.sweetrollthief.hub.HubBean;
-import com.sweetrollthief.hub.Hub;
 import com.sweetrollthief.hub.Gate;
+import com.sweetrollthief.hub.gate.ConnectionProvider.STATUS;
+
 /**
 * Network I/O Handling bean
 *
 **/
-public class DefaultGateImpl extends HubBean implements Gate {
-    private boolean isOpen;
+public class DefaultGateImpl implements Gate {
+    private Selector selector;
+
     private Queue<Integer> listenersQueue = new LinkedList<>();
 
     @Override
@@ -26,53 +28,91 @@ public class DefaultGateImpl extends HubBean implements Gate {
         }
     }
     @Override
-    public void open() {
-        isOpen = true;
-        try (Selector selector = Selector.open()) {
-            Iterator<SelectionKey> it;
-            SelectionKey key;
+    public void run() {
+        try {
+            this.open();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
-            while (isOpen) {
-                check(selector);
-                it = selector.selectedKeys().iterator();
+        close();
+    }
+    @Override
+    public void open() throws Exception {
+        selector = Selector.open();
 
-                while (it.hasNext()) {
+        Iterator<SelectionKey> it;
+        SelectionKey key;
 
+        while (true) {
+            check();
+            selector.select();
 
-                    it.remove();
+            it = selector.selectedKeys().iterator();
+
+            while (it.hasNext()) {
+                key = it.next();
+                it.remove();
+
+                if (key.isValid()) {
+                    if (key.isReadable()) {
+                        read(key);
+                    } else if (key.isWritable()) {
+                        write(key);
+                    } else if (key.isConnectable()) {
+                        connect(key);
+                    } else if (key.isAcceptable()) {
+                        accept(key);
+                    }
                 }
             }
-        } catch (Exception e) {
-            isOpen = false;
-            e.printStackTrace();
         }
     }
     @Override
     public void close() {
-        isOpen = false;
+        if (selector != null) {
+            try {
+                selector.close();
+            } catch (Exception ie) {}
+        }
     }
 
-    private void check(Selector selector) throws Exception {
+    private void check() throws Exception {
         Integer port;
         ServerSocketChannel ssc;
 
-        while ((port = listenersQueue.poll()) != null) {
-            ssc = ServerSocketChannel.open();
-            ssc.bind(new InetSocketAddress(port));
-            ssc.configureBlocking(false);
-            ssc.register(selector, SelectionKey.OP_ACCEPT);
+        synchronized (listenersQueue) {
+            while ((port = listenersQueue.poll()) != null) {
+                ssc = ServerSocketChannel.open();
+                ssc.configureBlocking(false);
+                ssc.bind(new InetSocketAddress(port));
+                ssc.register(selector, SelectionKey.OP_ACCEPT);
+            }
         }
     }
-    private void accept() throws Exception {
+    private void accept(SelectionKey key) throws Exception {
+        ServerSocketChannel ssc = (ServerSocketChannel) key.channel();
+        SocketChannel sc = ssc.accept();
+        sc.configureBlocking(false);
+
+        ConnectionProvider connectionProvider = new ConnectionProvider(STATUS.OP_READ);
+        sc.register(selector, SelectionKey.OP_READ, connectionProvider);
+    }
+    private void connect(SelectionKey key) throws Exception {
 
     }
-    private void connect() throws Exception {
+    private void read(SelectionKey key) throws Exception {
+        ConnectionProvider provider = (ConnectionProvider) key.attachment();
 
+        if (provider.status().equals(STATUS.OP_READ)) {
+            System.out.println(((SocketChannel) key.channel()).socket().getLocalPort());
+        }
     }
-    private void read() throws Exception {
+    private void write(SelectionKey key) throws Exception {
+        ConnectionProvider provider = (ConnectionProvider) key.attachment();
 
-    }
-    private void write() throws Exception {
+        if (provider.status().equals(STATUS.OP_WRITE)) {
 
+        }
     }
 }

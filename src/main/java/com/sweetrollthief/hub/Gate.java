@@ -1,7 +1,7 @@
 package com.sweetrollthief.hub;
 
-public interface Gate {
+public interface Gate extends Runnable {
     void addListener(int port);
-    void open();
+    void open() throws Exception;
     void close();
 }

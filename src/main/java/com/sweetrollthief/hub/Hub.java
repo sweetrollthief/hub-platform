@@ -1,6 +1,9 @@
 package com.sweetrollthief.hub;
 
-import org.springframework.context.annotation.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 
@@ -8,47 +11,25 @@ import org.springframework.context.ConfigurableApplicationContext;
 * Static program entry point
 *
 **/
-public class Hub extends HubBean {
+public class Hub {
     public static void main(String[] args) {
         ApplicationContext context = new AnnotationConfigApplicationContext(HubConfig.class);
+        ExecutorService service = Executors.newSingleThreadExecutor();
 
         try {
-            context.getBean(Gate.class).open();
-            context.getBean(Hub.class).watch();
+            service.submit(configureGate(context.getBean(Gate.class)));
+            context.getBean(Console.class).watch();
         } catch (Exception e) {
             e.printStackTrace();
         }
 
+        service.shutdown();
         ((ConfigurableApplicationContext) context).close();
     }
 
-    public void watch() throws Exception {
-        Console consoleHandler = context.getBean(Console.class);
+    private static Runnable configureGate(Gate gate) throws Exception {
+        gate.addListener(8080);
 
-        // TODO: remove that ugly loop condition
-        while (true) {
-            switch (validateCommand(consoleHandler.watch())) {
-                case 100:
-                    break;
-                case 200:
-                    return;
-                case 500:
-                    throw new Exception("Error");
-            }
-        }
-    }
-
-    public int validateCommand(String str) {
-        if (str == null) {
-            return 500;
-        } else if ("exit".equals(str)) {
-            return 200;
-        }
-
-        return 100;
-    }
-
-    public void close() {
-
+        return gate;
     }
 }
