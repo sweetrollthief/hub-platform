@@ -17,6 +17,7 @@ public class Hub {
         ExecutorService service = Executors.newSingleThreadExecutor();
 
         try {
+            configureRouter(context.getBean(Router.class));
             service.submit(configureGate(context.getBean(Gate.class)));
             context.getBean(Console.class).watch();
         } catch (Exception e) {
@@ -31,5 +32,8 @@ public class Hub {
         gate.addListener(8080);
 
         return gate;
+    }
+    private static void configureRouter(Router router) throws Exception {
+        router.registerProtocol(8080, new com.sweetrollthief.hub.transfer.http.HttpProvider());
     }
 }

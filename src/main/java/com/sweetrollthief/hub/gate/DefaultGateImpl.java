@@ -4,22 +4,37 @@ import java.util.Queue;
 import java.util.LinkedList;
 import java.util.Iterator;
 import java.net.InetSocketAddress;
+import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SelectionKey;
 
+import org.springframework.context.ApplicationContext;
+
 import com.sweetrollthief.hub.Gate;
-import com.sweetrollthief.hub.gate.ConnectionProvider.STATUS;
+import com.sweetrollthief.hub.Router;
+import com.sweetrollthief.hub.transfer.ConnectionProvider;
+import com.sweetrollthief.hub.transfer.ConnectionProvider.STATUS;
 
 /**
 * Network I/O Handling bean
 *
 **/
 public class DefaultGateImpl implements Gate {
+    private final static int bufferSize = 1024;
+    private ApplicationContext context;
+
     private Selector selector;
+    private ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
 
     private Queue<Integer> listenersQueue = new LinkedList<>();
+
+    @Override
+    public void setApplicationContext(ApplicationContext context) {
+        this.context = context;
+    }
 
     @Override
     public void addListener(int port) {
@@ -96,6 +111,9 @@ public class DefaultGateImpl implements Gate {
         sc.configureBlocking(false);
 
         ConnectionProvider connectionProvider = new ConnectionProvider(STATUS.OP_READ);
+        connectionProvider.setLocalAddress((InetSocketAddress) sc.socket().getLocalSocketAddress());
+        connectionProvider.setRemoteAddress((InetSocketAddress) sc.socket().getRemoteSocketAddress());
+
         sc.register(selector, SelectionKey.OP_READ, connectionProvider);
     }
     private void connect(SelectionKey key) throws Exception {
@@ -105,7 +123,21 @@ public class DefaultGateImpl implements Gate {
         ConnectionProvider provider = (ConnectionProvider) key.attachment();
 
         if (provider.status().equals(STATUS.OP_READ)) {
-            System.out.println(((SocketChannel) key.channel()).socket().getLocalPort());
+            byte[] tempBuffer;
+            ByteArrayOutputStream temp = new ByteArrayOutputStream();
+            SocketChannel sc = (SocketChannel) key.channel();
+            int read = -1;
+
+            while ((read = sc.read(buffer)) > 0) {
+                buffer.flip();
+                tempBuffer = new byte[read];
+                buffer.get(tempBuffer);
+                temp.write(tempBuffer);
+            }
+
+            if (temp.size() > 0) {
+                context.getBean(Router.class).forwardPacket(temp.toByteArray(), provider);
+            }
         }
     }
     private void write(SelectionKey key) throws Exception {

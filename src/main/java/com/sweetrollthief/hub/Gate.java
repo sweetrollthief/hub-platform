@@ -1,6 +1,13 @@
 package com.sweetrollthief.hub;
 
-public interface Gate extends Runnable {
+import org.springframework.context.ApplicationContextAware;
+
+/**
+* Handles IO layer
+*
+*
+**/
+public interface Gate extends Runnable, ApplicationContextAware {
     void addListener(int port);
     void open() throws Exception;
     void close();
