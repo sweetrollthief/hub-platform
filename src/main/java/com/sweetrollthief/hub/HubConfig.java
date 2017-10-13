@@ -10,7 +10,7 @@ import com.sweetrollthief.hub.router.DefaultRouterImpl;
 public class HubConfig {
     @Bean
     public Console console() {
-        return new Intercom();
+        return new Intercom(System.in);
     }
     @Bean
     public Gate gate() {

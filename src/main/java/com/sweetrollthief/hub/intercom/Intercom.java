@@ -12,9 +12,8 @@ import com.sweetrollthief.hub.Console;
 public class Intercom implements Console {
     private Scanner in;
 
-    @Override
-    public void setInputStream(InputStream is) {
-        in = new Scanner(is);
+    public Intercom(InputStream in) {
+        this.in = new Scanner(in);
     }
 
     @Override

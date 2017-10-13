@@ -9,7 +9,15 @@ import java.util.LinkedList;
 
 import com.sweetrollthief.hub.transfer.IPacket;
 
+// TODO: create HttpRequest, HttpResponse
 public class HttpPacket implements IPacket {
+    enum PARSING_STAGE {
+        START,
+        FIRST_LINE,
+        HEADER,
+        BODY,
+        END
+    }
     enum SEGMENT_TYPE {
         METHOD,
         CODE,
@@ -21,31 +29,30 @@ public class HttpPacket implements IPacket {
         BODY_SEGMENT_LENGTH,
         BODY_SEGMENT_CONTENT
     }
-    class Element {
+    class Segment {
         private int position;
         private int length;
         private SEGMENT_TYPE type;
 
-        public Element(int position, int length, SEGMENT_TYPE type) {
+        public Segment(int position, int length, SEGMENT_TYPE type) {
             this.position = position;
             this.length = length;
             this.type = type;
         }
-        public int length() {
+        public int getLength() {
             return length;
         }
-        public int position() {
+        public int getPosition() {
             return position;
         }
-        public SEGMENT_TYPE type() {
+        public SEGMENT_TYPE getType() {
             return type;
         }
     }
 
-    private int parsingPosition;
-
+    private PARSING_STAGE currentParsingStage = PARSING_STAGE.START;
     private byte[] rawData;
-    private List<Element> elementList = new LinkedList<>();
+    private List<Segment> segmentList = new LinkedList<>();
 
     @Override
     public void setRawData(byte[] data) {
@@ -56,127 +63,108 @@ public class HttpPacket implements IPacket {
         return rawData;
     }
     public String getMethod() {
-        return getEssential(SEGMENT_TYPE.METHOD);
+        return findSegment(SEGMENT_TYPE.METHOD);
     }
     public int getCode() throws NullPointerException {
-        String code = getEssential(SEGMENT_TYPE.CODE);
-
-        if (code == null) {
-            throw new NullPointerException();
-        }
-
-        return Integer.parseInt(code);
+        return Integer.parseInt(findSegment(SEGMENT_TYPE.CODE));
     }
     public String getProtocol() {
-        return getEssential(SEGMENT_TYPE.PROTOCOL);
+        return findSegment(SEGMENT_TYPE.PROTOCOL);
     }
     public String getURI() {
-        return getEssential(SEGMENT_TYPE.URI);
+        return findSegment(SEGMENT_TYPE.URI);
     }
     public String getHeader(String headerKey) {
-        Iterator<Element> it = elementList.iterator();
-        Element tempKey, tempValue;
+        Iterator<Segment> it = segmentList.iterator();
+        Segment key, value;
 
         while (it.hasNext()) {
-            tempKey = it.next();
+            key = it.next();
 
             // TODO: ikr
-            if (tempKey.type() == SEGMENT_TYPE.HEADER_KEY
-                && headerKey.equals(
-                    new String (
-                        Arrays.copyOfRange(
-                            rawData,
-                            tempKey.position(),
-                            tempKey.position() + tempKey.length())))) {
-                tempValue = it.next();
-                return new String(Arrays.copyOfRange(
-                    rawData, tempValue.position(), tempValue.position() + tempValue.length()));
+            if (key.getType() == SEGMENT_TYPE.HEADER_KEY
+                && headerKey.equals(getSegmentValue(key))) {
+                value = it.next();
+                return getSegmentValue(value);
             }
         }
 
         return null;
     }
-    public Map<String, String> getHeader() {
-        Map<String, String> header = new HashMap<>();
+    public Map<String, String> getAllHeaders() {
+        Map<String, String> headerList = new HashMap<>();
 
-        Iterator<Element> it = elementList.iterator();
-        Element tempKey, tempValue;
+        Iterator<Segment> it = segmentList.iterator();
+        Segment key, value;
 
         while (it.hasNext()) {
-            tempKey = it.next();
+            key = it.next();
 
-            if (tempKey.type() == SEGMENT_TYPE.HEADER_KEY) {
-                tempValue = it.next();
-                header.put(
-                    new String(Arrays.copyOfRange(
-                        rawData, tempKey.position(), tempKey.position() + tempKey.length())),
-                    new String(Arrays.copyOfRange(
-                        rawData, tempValue.position(), tempValue.position() + tempValue.length())));
+            if (key.getType() == SEGMENT_TYPE.HEADER_KEY) {
+                value = it.next();
+                headerList.put(
+                    getSegmentValue(key),
+                    getSegmentValue(value));
             }
         }
 
-        return header;
+        return headerList;
     }
-    private String getEssential(SEGMENT_TYPE type) {
-        Iterator<Element> it = elementList.iterator();
-        Element temp;
+    private String findSegment(SEGMENT_TYPE type) {
+        Iterator<Segment> it = segmentList.iterator();
+        Segment segment;
 
         while (it.hasNext()) {
-            temp = it.next();
-            if (temp.type() == type) {
-                return new String(Arrays.copyOfRange(
-                    rawData, temp.position(), temp.position() + temp.length()));
+            segment = it.next();
+            if (segment.getType() == type) {
+                return getSegmentValue(segment);
             }
         }
 
         return null;
     }
-    void appendElement(int position, int length, SEGMENT_TYPE type) {
-        elementList.add(new Element(position, length, type));
+    private String getSegmentValue(Segment segment) {
+        return new String(Arrays.copyOfRange(
+            rawData, segment.getPosition(), segment.getPosition() + segment.getLength()));
     }
-    List<Element> getElementList() {
-        return elementList;
+    void createSegment(int position, int length, SEGMENT_TYPE type) {
+        segmentList.add(new Segment(position, length, type));
+    }
+    List<Segment> getSegmentList() {
+        return segmentList;
     }
     int getBodyLength() {
         int length = 0;
 
-        Iterator<Element> it = elementList.iterator();
-        Element temp;
+        Iterator<Segment> it = segmentList.iterator();
+        Segment segment;
 
         while (it.hasNext()) {
-            temp = it.next();
+            segment = it.next();
 
-            if (temp.type() == SEGMENT_TYPE.BODY_SEGMENT_CONTENT) {
-                length += temp.length();
+            if (segment.getType() == SEGMENT_TYPE.BODY_SEGMENT_CONTENT) {
+                length += segment.getLength();
             }
         }
 
         return length;
     }
-    /**
-    * @return current logical parsing part of message
-    * 0 - before first line
-    * 1 - first line
-    * 2 - header
-    * 3 - content
-    * 4 - after content
-    **/
-    int getParsingPosition() {
-        return parsingPosition;
+    PARSING_STAGE getParsingStage() {
+        return currentParsingStage;
     }
-    void setParsingPosition(int position) {
-        this.parsingPosition = position;
+    void setParsingStage(PARSING_STAGE stage) {
+        currentParsingStage = stage;
     }
     /**
     * @return position of last byte of last pasrsed element
     *
     */
     int getCurrentPosition() {
-        if (elementList.size() == 0) {
+        if (segmentList.size() == 0) {
             return 0;
         } else {
-            Element lastElement = elementList.get(elementList.size() - 1);
-            return lastElement.position() + lastElement.length();
+            Segment lastSegment = segmentList.get(segmentList.size() - 1);
+            return lastSegment.getPosition() + lastSegment.getLength();
         }
     }
 }

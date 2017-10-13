@@ -20,7 +20,6 @@ public class Hub {
         service = Executors.newSingleThreadExecutor();
 
         try {
-            configureConsole();
             configureRouter();
             configureGate();
 
@@ -48,11 +47,7 @@ public class Hub {
             }
         }
     }
-
-    private static void configureConsole() throws Exception {
-        Console console = context.getBean(Console.class);
-        console.setInputStream(System.in);
-    }
+    
     private static void configureGate() throws Exception {
         Gate gate = context.getBean(Gate.class);
         gate.addListener(8080);
