@@ -1,6 +1,7 @@
 package com.sweetrollthief.hub.intercom;
 
 import java.util.Scanner;
+import java.io.InputStream;
 
 import com.sweetrollthief.hub.Console;
 
@@ -9,39 +10,25 @@ import com.sweetrollthief.hub.Console;
 *
 **/
 public class Intercom implements Console {
-    private Scanner in = new Scanner(System.in);
+    private Scanner in;
 
     @Override
-    public void watch() {
-        try {
-            while (true) {
-                switch (getInput()) {
-                    case 100:
-                        break;
-                    case 200:
-                        return;
-                    case 500:
-                        throw new Exception("Error");
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    public void setInputStream(InputStream is) {
+        in = new Scanner(is);
     }
 
-    private int getInput() throws Exception {
-        while (!in.hasNextLine()) {
-            Thread.sleep(100);
+    @Override
+    public String getInputLine() {
+        try {
+            while (!in.hasNextLine()) {
+                Thread.sleep(100);
+            }
+
+            return in.nextLine();
+        } catch (Exception e) {
+            e.printStackTrace(); // TODO: handle output printing
         }
 
-        String temp = in.nextLine();
-
-        if (temp == null) {
-            return 500;
-        } else if ("exit".equals(temp)) {
-            return 200;
-        }
-
-        return 100;
+        return null;
     }
 }

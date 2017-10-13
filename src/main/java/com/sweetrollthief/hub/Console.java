@@ -1,5 +1,8 @@
 package com.sweetrollthief.hub;
 
+import java.io.InputStream;
+
 public interface Console {
-    void watch();
+    void setInputStream(InputStream in);
+    String getInputLine();
 }

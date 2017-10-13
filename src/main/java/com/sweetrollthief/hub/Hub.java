@@ -12,14 +12,21 @@ import org.springframework.context.ConfigurableApplicationContext;
 *
 **/
 public class Hub {
+    private static ApplicationContext context;
+    private static ExecutorService service;
+
     public static void main(String[] args) {
-        ApplicationContext context = new AnnotationConfigApplicationContext(HubConfig.class);
-        ExecutorService service = Executors.newSingleThreadExecutor();
+        context = new AnnotationConfigApplicationContext(HubConfig.class);
+        service = Executors.newSingleThreadExecutor();
 
         try {
-            configureRouter(context.getBean(Router.class));
-            service.submit(configureGate(context.getBean(Gate.class)));
-            context.getBean(Console.class).watch();
+            configureConsole();
+            configureRouter();
+            configureGate();
+
+            service.submit(context.getBean(Gate.class));
+
+            watch();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -28,12 +35,30 @@ public class Hub {
         ((ConfigurableApplicationContext) context).close();
     }
 
-    private static Runnable configureGate(Gate gate) throws Exception {
-        gate.addListener(8080);
+    private static void watch() {
+        Console console = context.getBean(Console.class);
 
-        return gate;
+        while (true) { // TODO: remove forever loop
+            switch (console.getInputLine()) {
+                case "exit":
+                    return;
+                default:
+                    System.out.println("Unknown command");
+                    continue;
+            }
+        }
     }
-    private static void configureRouter(Router router) throws Exception {
+
+    private static void configureConsole() throws Exception {
+        Console console = context.getBean(Console.class);
+        console.setInputStream(System.in);
+    }
+    private static void configureGate() throws Exception {
+        Gate gate = context.getBean(Gate.class);
+        gate.addListener(8080);
+    }
+    private static void configureRouter() throws Exception {
+        Router router = context.getBean(Router.class);
         router.registerProtocol(8080, new com.sweetrollthief.hub.transfer.http.HttpProvider());
     }
 }

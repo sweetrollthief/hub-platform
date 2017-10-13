@@ -11,14 +11,12 @@ import com.sweetrollthief.hub.transfer.http.HttpPacket.Element;
 
 class HttpPacketParser implements IPacketParser<HttpPacket> {
     @Override
-    public void parse(HttpPacket packet) {
+    public void parse(HttpPacket packet) throws Exception {
         if (packet.getParsingPosition() > 3) return;
 
         byte[] data = packet.getRawData();
         int position = packet.getCurrentPosition();
         int size = data.length;
-
-        System.out.println(position + " " + size + " " + packet.getParsingPosition());
 
         while (position < size) {
             switch (packet.getParsingPosition()) {
@@ -29,23 +27,50 @@ class HttpPacketParser implements IPacketParser<HttpPacket> {
                 case 2:
                     position = parseHeaderSegment(position, data, packet);
                     break;
+                case 3:
+                    position = parseBody(position, data, packet);
                 default:
                     position++;
             }
         }
 
-        System.out.println("METHOD |" + packet.getMethod() + "|");
-        System.out.println("URI |" + packet.getURI() + "|");
-        System.out.println("PROTOCOL |" + packet.getProtocol() + "|");
+        if (packet.getParsingPosition() == 4) {
+            System.out.println("METHOD |" + packet.getMethod() + "|");
+            System.out.println("URI |" + packet.getURI() + "|");
+            System.out.println("PROTOCOL |" + packet.getProtocol() + "|");
 
-        Map<String, String> header = packet.getHeader();
+            Map<String, String> header = packet.getHeader();
 
-        for (Map.Entry<String, String> entry : header.entrySet()) {
-            System.out.println("HEADER_LINE |" + entry.getKey() + ":" + entry.getValue() + "|");
+            for (Map.Entry<String, String> entry : header.entrySet()) {
+                System.out.println("HEADER_LINE |" + entry.getKey() + ":" + entry.getValue() + "|");
+            }
+
+            System.out.println("PARSED SUCCESSFULLY");
         }
     }
 
-    private int parseHeaderSegment(int position, byte[] data, HttpPacket packet) {
+    private int parseBody(int position, byte[] data, HttpPacket packet) throws Exception {
+        int size = data.length;
+
+        while (position < size) {
+            System.out.println("new char");
+            position++;
+        }
+
+        // EOF check TODO: handle chunked encoding
+        int requiredLength;
+        String lengthEntry = packet.getHeader("Content-Length");
+        if (lengthEntry == null) {
+            packet.setParsingPosition(4); // no length entry for request
+            return position;
+        } else if (packet.getBodyLength() == Integer.parseInt(lengthEntry)) {
+            packet.setParsingPosition(4);
+        }
+
+        return position;
+    }
+
+    private int parseHeaderSegment(int position, byte[] data, HttpPacket packet) throws Exception {
         int size = data.length;
         int lastPosition = position;
         boolean keyFound = false;
@@ -56,6 +81,11 @@ class HttpPacketParser implements IPacketParser<HttpPacket> {
                 lastPosition = position + 1;
                 keyFound = true;
             } else if (data[position] == 13) {
+                if (position - lastPosition == 0) {
+                    packet.setParsingPosition(3);
+                    return parseBody(position + 2, data, packet);
+                }
+
                 packet.appendElement(lastPosition, position - lastPosition, SEGMENT_TYPE.HEADER_VALUE);
                 lastPosition = position + 2;
                 keyFound = false;

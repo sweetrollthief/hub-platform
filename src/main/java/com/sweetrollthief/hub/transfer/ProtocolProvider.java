@@ -6,7 +6,7 @@ public abstract class ProtocolProvider<T extends IPacket> {
 
     public abstract T getEmptyPacket();
 
-    public void parse(T packet) {
+    public void parse(T packet) throws Exception {
         parser.parse(packet);
     }
 

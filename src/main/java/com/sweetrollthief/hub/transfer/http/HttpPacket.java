@@ -73,6 +73,29 @@ public class HttpPacket implements IPacket {
     public String getURI() {
         return getEssential(SEGMENT_TYPE.URI);
     }
+    public String getHeader(String headerKey) {
+        Iterator<Element> it = elementList.iterator();
+        Element tempKey, tempValue;
+
+        while (it.hasNext()) {
+            tempKey = it.next();
+
+            // TODO: ikr
+            if (tempKey.type() == SEGMENT_TYPE.HEADER_KEY
+                && headerKey.equals(
+                    new String (
+                        Arrays.copyOfRange(
+                            rawData,
+                            tempKey.position(),
+                            tempKey.position() + tempKey.length())))) {
+                tempValue = it.next();
+                return new String(Arrays.copyOfRange(
+                    rawData, tempValue.position(), tempValue.position() + tempValue.length()));
+            }
+        }
+
+        return null;
+    }
     public Map<String, String> getHeader() {
         Map<String, String> header = new HashMap<>();
 
@@ -113,6 +136,22 @@ public class HttpPacket implements IPacket {
     }
     List<Element> getElementList() {
         return elementList;
+    }
+    int getBodyLength() {
+        int length = 0;
+
+        Iterator<Element> it = elementList.iterator();
+        Element temp;
+
+        while (it.hasNext()) {
+            temp = it.next();
+
+            if (temp.type() == SEGMENT_TYPE.BODY_SEGMENT_CONTENT) {
+                length += temp.length();
+            }
+        }
+
+        return length;
     }
     /**
     * @return current logical parsing part of message
