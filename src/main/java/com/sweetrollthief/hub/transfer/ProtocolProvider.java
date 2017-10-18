@@ -1,16 +1,27 @@
 package com.sweetrollthief.hub.transfer;
 
-public abstract class ProtocolProvider<T extends IPacket> {
-    protected IPacketParser<T> parser;
-    protected IPacketWrapper<T> wrapper;
+import com.sweetrollthief.hub.transfer.http.*;
 
-    public abstract T getEmptyPacket();
+public class ProtocolProvider {
+    public static IPacketParser getParser(String protocolName) throws Exception {
+        if (protocolName.equals("http")) {
+            return new HttpPacketParser();
+        }
 
-    public void parse(T packet) throws Exception {
-        parser.parse(packet);
+        throw new Exception("Unsupported protocol");
     }
+    public static IPacketWrapper getWrapper(String protocolName) throws Exception {
+        if (protocolName.equals("http")) {
+            return new HttpPacketWrapper();
+        }
 
-    public byte[] wrap(T packet) {
-        return wrapper.wrap(packet);
+        throw new Exception("Unsupported protocol");
+    }
+    public static IPacket getEmptyPacket(String protocolName) throws Exception {
+        if (protocolName.equals("http")) {
+            return new HttpPacket();
+        }
+
+        throw new Exception("Unsupported protocol");
     }
 }

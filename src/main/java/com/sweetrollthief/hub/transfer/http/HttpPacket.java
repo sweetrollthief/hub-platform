@@ -1,5 +1,6 @@
 package com.sweetrollthief.hub.transfer.http;
 
+import java.io.ByteArrayOutputStream;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Arrays;
@@ -57,6 +58,19 @@ public class HttpPacket implements IPacket {
     @Override
     public void setRawData(byte[] data) {
         this.rawData = data;
+    }
+    @Override
+    public void appendRawData(byte[] data) throws Exception {
+        if (rawData == null) {
+            rawData = data;
+        } else {
+            ByteArrayOutputStream content =
+                new ByteArrayOutputStream(rawData.length + data.length);
+            content.write(rawData);
+            content.write(data);
+
+            rawData = content.toByteArray();
+        }
     }
     @Override
     public byte[] getRawData() {

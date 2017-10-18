@@ -9,7 +9,7 @@ import com.sweetrollthief.hub.transfer.ProtocolProvider;
 *
 */
 public interface Router {
-    void registerProtocol(int port, ProtocolProvider protocolProvider);
+    void registerPort(int port, String protocolName);
     /**
     * Forwards packet with net data and connection provider attached to this connection
     *

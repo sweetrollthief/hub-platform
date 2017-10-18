@@ -47,13 +47,13 @@ public class Hub {
             }
         }
     }
-    
+
     private static void configureGate() throws Exception {
         Gate gate = context.getBean(Gate.class);
         gate.addListener(8080);
     }
     private static void configureRouter() throws Exception {
         Router router = context.getBean(Router.class);
-        router.registerProtocol(8080, new com.sweetrollthief.hub.transfer.http.HttpProvider());
+        router.registerPort(8080, "http");
     }
 }

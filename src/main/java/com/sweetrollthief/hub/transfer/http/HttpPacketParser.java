@@ -11,9 +11,14 @@ import com.sweetrollthief.hub.transfer.http.HttpPacket.SEGMENT_TYPE;
 import com.sweetrollthief.hub.transfer.http.HttpPacket.Segment;
 
 
-class HttpPacketParser implements IPacketParser<HttpPacket> {
+public class HttpPacketParser implements IPacketParser<HttpPacket> {
     private final static int SPACE_OFFSET = 1;
     private final static int NEW_LINE_OFFSET = 2;
+
+    private final static byte COLON_BYTE = 58;
+    private final static byte CARRIAGERETURN_BYTE = 13;
+    private final static byte NEWLINE_BYTE = 10;
+    private final static byte SPACE_BYTE = 32;
 
     @Override
     public void parse(HttpPacket packet) throws Exception {
@@ -55,18 +60,16 @@ class HttpPacketParser implements IPacketParser<HttpPacket> {
     private int parseBody(int position, byte[] data, HttpPacket packet) throws Exception {
         int size = data.length;
 
-        while (position < size) {
-            System.out.println("new char");
-            position++;
-        }
-
         // EOF check TODO: handle chunked encoding
-        int requiredLength;
         String lengthEntry = packet.getHeader("Content-Length");
+
         if (lengthEntry == null) {
             packet.setParsingStage(PARSING_STAGE.END); // no length entry for request
             return position;
-        } else if (packet.getBodyLength() == Integer.parseInt(lengthEntry)) {
+        } else {
+            int requiredLength = Integer.parseInt(lengthEntry);
+            position = size;
+            // handle body writing
             packet.setParsingStage(PARSING_STAGE.END);
         }
 
@@ -79,11 +82,20 @@ class HttpPacketParser implements IPacketParser<HttpPacket> {
         boolean keyFound = false;
 
         while (position < size) {
-            if (data[position] == (byte) ':' && !keyFound) {
+            if (data[position] == COLON_BYTE && !keyFound) {
                 packet.createSegment(lastPosition, position - lastPosition, SEGMENT_TYPE.HEADER_KEY);
                 lastPosition = position + SPACE_OFFSET;
                 keyFound = true;
-            } else if (data[position] == (byte) '\n') {
+            } else if (data[position] == CARRIAGERETURN_BYTE) {
+                while (lastPosition < position) {
+                    if (data[lastPosition] == SPACE_BYTE) {
+                        lastPosition++;
+                        continue;
+                    }
+
+                    break;
+                }
+
                 if (position - lastPosition == 0) {
                     packet.setParsingStage(PARSING_STAGE.BODY);
                     return parseBody(position + NEW_LINE_OFFSET, data, packet);
@@ -105,7 +117,7 @@ class HttpPacketParser implements IPacketParser<HttpPacket> {
         int lastPosition = position;
 
         while (position < size) {
-            if (data[position] == (byte) ' ') {
+            if (data[position] == SPACE_BYTE) {
                 if (lastPosition == 0) {
                     packet.createSegment(lastPosition, position - lastPosition, SEGMENT_TYPE.METHOD);
                     lastPosition = position + SPACE_OFFSET;
@@ -113,7 +125,7 @@ class HttpPacketParser implements IPacketParser<HttpPacket> {
                     packet.createSegment(lastPosition, position - lastPosition, SEGMENT_TYPE.URI);
                     lastPosition = position + SPACE_OFFSET;
                 }
-            } else if (data[position] == (byte) '\n') {
+            } else if (data[position] == CARRIAGERETURN_BYTE) {
                 packet.createSegment(lastPosition, position - lastPosition, SEGMENT_TYPE.PROTOCOL);
                 packet.setParsingStage(PARSING_STAGE.HEADER);
                 return position + NEW_LINE_OFFSET;
