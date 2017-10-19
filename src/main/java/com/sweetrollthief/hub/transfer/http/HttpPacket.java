@@ -124,22 +124,32 @@ public class HttpPacket implements IPacket {
 
         return headerList;
     }
+    public byte[] getBody() {
+        return findRawSegment(SEGMENT_TYPE.BODY_SEGMENT_CONTENT);
+    }
+
     private String findSegment(SEGMENT_TYPE type) {
+        return new String(findRawSegment(type));
+    }
+    private byte[] findRawSegment(SEGMENT_TYPE type) {
         Iterator<Segment> it = segmentList.iterator();
         Segment segment;
 
         while (it.hasNext()) {
             segment = it.next();
             if (segment.getType() == type) {
-                return getSegmentValue(segment);
+                return getSegmentData(segment);
             }
         }
 
         return null;
     }
     private String getSegmentValue(Segment segment) {
-        return new String(Arrays.copyOfRange(
-            rawData, segment.getPosition(), segment.getPosition() + segment.getLength()));
+        return new String(getSegmentData(segment));
+    }
+    private byte[] getSegmentData(Segment segment) {
+        return Arrays.copyOfRange(
+            rawData, segment.getPosition(), segment.getPosition() + segment.getLength());
     }
     void createSegment(int position, int length, SEGMENT_TYPE type) {
         segmentList.add(new Segment(position, length, type));

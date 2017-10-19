@@ -1,9 +1,9 @@
 package com.sweetrollthief.hub.transfer.http;
 
+import java.io.ByteArrayInputStream;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
-import java.io.ByteArrayInputStream;
 
 import com.sweetrollthief.hub.transfer.IPacketParser;
 import com.sweetrollthief.hub.transfer.http.HttpPacket.PARSING_STAGE;
@@ -43,17 +43,15 @@ public class HttpPacketParser implements IPacketParser<HttpPacket> {
         }
 
         if (packet.getParsingStage() == PARSING_STAGE.END) {
-            System.out.println("METHOD |" + packet.getMethod() + "|");
-            System.out.println("URI |" + packet.getURI() + "|");
-            System.out.println("PROTOCOL |" + packet.getProtocol() + "|");
+            System.out.println(packet.getMethod() + " " + packet.getURI() + " " + packet.getProtocol());
 
             Map<String, String> header = packet.getAllHeaders();
 
             for (Map.Entry<String, String> entry : header.entrySet()) {
-                System.out.println("HEADER_LINE |" + entry.getKey() + ":" + entry.getValue() + "|");
+                System.out.println(entry.getKey() + ":" + entry.getValue() + "|");
             }
 
-            System.out.println("PARSED SUCCESSFULLY");
+            System.out.println(new String(packet.getBody()));
         }
     }
 
@@ -68,7 +66,11 @@ public class HttpPacketParser implements IPacketParser<HttpPacket> {
             return position;
         } else {
             int requiredLength = Integer.parseInt(lengthEntry);
-            position = size;
+
+            if (position + requiredLength == size) {
+                packet.createSegment(position, requiredLength, SEGMENT_TYPE.BODY_SEGMENT_CONTENT);
+                position = size;
+            }
             // handle body writing
             packet.setParsingStage(PARSING_STAGE.END);
         }

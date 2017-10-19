@@ -1,5 +1,9 @@
 package com.sweetrollthief.hub;
 
+import java.util.Arrays;
+import java.util.Map;
+import java.util.HashMap;
+
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
@@ -14,6 +18,14 @@ public class HttpProviderTest extends TestCase {
     private static final String method = "GET";
     private static final String uri = "/URI";
     private static final String protocol = "HTTP/1.1";
+    private static final Map<String,String> header = new HashMap<String,String>() {
+            {
+                put("HeaderKey1", "HeaderValue1");
+                put("HeaderKey2", "HeaderValue2");
+                put("Content-Length", "4");
+                put("HeaderKey3", "HeaderValue3");
+            }
+    };
 
     public HttpProviderTest(String testName) {
         super(testName);
@@ -29,9 +41,7 @@ public class HttpProviderTest extends TestCase {
             assertTrue(packet instanceof HttpPacket);
 
             assertTrue(testParser(packet));
-
-            IPacketWrapper wrapper = ProtocolProvider.getWrapper("http");
-            assertTrue(wrapper instanceof HttpPacketWrapper);
+            assertTrue(testWrapper(packet));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -48,24 +58,45 @@ public class HttpProviderTest extends TestCase {
         assertTrue(uri.equals(packet.getURI()));
         assertTrue(protocol.equals(packet.getProtocol()));
 
+        for(Map.Entry<String,String> entry : header.entrySet()) {
+            assertTrue(packet.getHeader(entry.getKey()).equals(entry.getValue()));
+        }
+
+        assertTrue(Arrays.equals(getBody().getBytes(), packet.getBody()));
+
+        return true;
+    }
+    public boolean testWrapper(HttpPacket packet) throws Exception {
+        IPacketWrapper wrapper = ProtocolProvider.getWrapper("http");
+        assertTrue(wrapper instanceof HttpPacketWrapper);
+
+        assertTrue(Arrays.equals(wrapper.wrap(packet), getRawData()));
+
         return true;
     }
 
     private byte[] getRawData() {
-        return new StringBuilder(method)
+        StringBuilder builder = new StringBuilder(method)
             .append(" ")
             .append(uri)
             .append(" ")
             .append(protocol)
-            .append("\r\n")
-            .append("Header1: HeaderValue1\r\n")
-            .append("Header2: HeaderValue2\r\n")
-            .append("Content-Length: 4\r\n")
-            .append("Header3: HeaderValue3\r\n")
-            .append("Header4: HeaderValue4\r\n")
-            .append("\r\n")
-            .append("body")
-            .toString()
-            .getBytes();
+            .append("\r\n");
+
+        for(Map.Entry<String,String> entry : header.entrySet()) {
+            builder.append(entry.getKey())
+                .append(":")
+                .append(entry.getValue())
+                .append("\r\n");
+        }
+
+        builder.append("\r\n")
+            .append(getBody());
+
+        return builder.toString().getBytes();
+    }
+
+    private String getBody() {
+        return "body";
     }
 }
